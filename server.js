@@ -1,21 +1,35 @@
-const http = require('http');
+const express = require('express');
+const app = express();
 const host = 'localhost';
 const port = 8000;
 
-const server = http.createServer((_req, res) => {
-    const delay = Math.floor(Math.random() * (3000 - 1000 + 1)) + 1000;
-    setTimeout(() => {
-        const isError = Math.random() < 0.1;
-        if (isError) {
-            res.writeHead(500, { 'Content-Type': 'text/plain' });
-            res.end('Internal Server Error 500');
-        } else {
-            res.writeHead(200, { 'Content-Type': 'text/plain' });
-            res.end('Hello world!');
-        }
-    }, delay);
+app.set('view engine', 'pug');
+app.set('views', './views');
+
+app.use((req, res, next) => {
+    const shouldThrowError = Math.random() < 0.1;
+
+    if (shouldThrowError) {
+        const delay = Math.floor(Math.random() * 3000) + 1000;
+        req.delay = delay;
+        setTimeout(() => {
+            res.status(500).render('error', { error: 'Simulated 500 Internal Server Error', delay });
+        }, delay);
+    } else {
+        next();
+    }
 });
 
-server.listen(port, host, () => {
-    console.log(`Server is running on http://${host}:${port}`);
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    const delay = req.delay || 0;
+    res.status(500).render('error', { error: err.message, delay });
+});
+
+app.get('/', (req, res) => {
+    res.send('Hello, World!');
+});
+
+app.listen(port, () => {
+    console.log(`Server is running at http://${host}:${port}`);
 });
